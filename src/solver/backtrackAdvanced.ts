@@ -4,7 +4,10 @@ import {
   verify_connected_rule,
   verify_area_rule,
   verify_underclue_rule,
-  verify_bad_pattern_line_rule
+  verify_bad_pattern_line_rule,
+  verify_bad_pattern_t_rule,
+  verify_bad_pattern_checkerboard_rule,
+  verify_bad_pattern_almost_square_rule
 } from './rules';
 import {
   verify_area_symbol,
@@ -145,6 +148,11 @@ export function isValidAdvanced(
 
     // Bad pattern (line variant)
     if (rule.kind == 'bad_pattern_line' && !verify_bad_pattern_line_rule(game.board, rule)) return false;
+
+    // Bad pattern (T-shape, checkerboard, almost-square variants)
+    if (rule.kind == 'bad_pattern_t' && !verify_bad_pattern_t_rule(game.board, rule)) return false;
+    if (rule.kind == 'bad_pattern_checkerboard' && !verify_bad_pattern_checkerboard_rule(game.board, rule)) return false;
+    if (rule.kind == 'bad_pattern_almost_square' && !verify_bad_pattern_almost_square_rule(game.board, rule)) return false;
   }
 
   return true;

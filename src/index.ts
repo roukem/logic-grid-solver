@@ -390,6 +390,21 @@ function handleAddRule(event: MouseEvent) {
       game.rules.push({ kind: 'bad_pattern_line', color, length: num });
       updateRuleList();
     });
+  } else if (rule == 'bad_pattern_t dark') {
+    game.rules.push({ kind: 'bad_pattern_t', color: Cell.Dark });
+    updateRuleList();
+  } else if (rule == 'bad_pattern_t light') {
+    game.rules.push({ kind: 'bad_pattern_t', color: Cell.Light });
+    updateRuleList();
+  } else if (rule == 'bad_pattern_checkerboard') {
+    game.rules.push({ kind: 'bad_pattern_checkerboard' });
+    updateRuleList();
+  } else if (rule == 'bad_pattern_almost_square dark') {
+    game.rules.push({ kind: 'bad_pattern_almost_square', color: Cell.Dark });
+    updateRuleList();
+  } else if (rule == 'bad_pattern_almost_square light') {
+    game.rules.push({ kind: 'bad_pattern_almost_square', color: Cell.Light });
+    updateRuleList();
   }
 }
 
@@ -413,6 +428,14 @@ function updateRuleList() {
       element.textContent = `Underclued: fill ${rule.count} forced cell${rule.count == 1 ? '' : 's'}`;
     } else if (rule.kind == 'bad_pattern_line') {
       element.textContent = `No ${rule.length} ${rule.color == Cell.Dark ? 'dark' : 'light'} cells in a row or column`;
+    } else if (rule.kind == 'bad_pattern_t') {
+      element.textContent = `No T-shape of ${rule.color == Cell.Dark ? 'dark' : 'light'} cells`;
+    } else if (rule.kind == 'bad_pattern_checkerboard') {
+      element.textContent = `No 2×2 checkerboard pattern`;
+    } else if (rule.kind == 'bad_pattern_almost_square') {
+      const majority = rule.color == Cell.Dark ? 'dark' : 'light';
+      const minority = rule.color == Cell.Dark ? 'light' : 'dark';
+      element.textContent = `No 2×2 with three ${majority} cells and one ${minority} cell`;
     }
 
     list.appendChild(element);
