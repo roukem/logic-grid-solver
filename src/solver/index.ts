@@ -1,4 +1,4 @@
-import { ConnectedRule, AreaRule } from './rules';
+import { ConnectedRule, AreaRule, UndercluedRule } from './rules';
 import { AreaSymbol, DartSymbol, ViewpointSymbol, GalaxySymbol, LotusSymbol } from './symbols';
 
 export interface Pos {
@@ -15,7 +15,7 @@ export enum Cell {
 
 export type Color = Cell.Light | Cell.Dark;
 
-export type Rule = ConnectedRule | AreaRule;
+export type Rule = ConnectedRule | AreaRule | UndercluedRule;
 
 export type Symbol = AreaSymbol | DartSymbol | ViewpointSymbol | GalaxySymbol | LotusSymbol;
 

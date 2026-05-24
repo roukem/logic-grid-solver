@@ -1,6 +1,7 @@
 import presets from './presets';
 import { Board, Symbol, Pos, Cell, Direction, Game } from './solver';
 import { solveAdvanced } from './solver/backtrackAdvanced';
+import { findForcedCells, UndercluedRule } from './solver/rules';
 
 const canvas = document.getElementById('board')! as HTMLCanvasElement;
 const rect = canvas.getBoundingClientRect();
@@ -208,12 +209,37 @@ function createEmptyGame(sizeX: number, sizeY: number): Game {
 function solveBoard() {
   console.log('Solving the game...');
 
+  const underclueIdx = game.rules.findIndex(r => r.kind == 'underclue');
+  if (underclueIdx === -1) {
+    console.time();
+    const success = solveAdvanced(game);
+    console.timeEnd();
+
+    if (!success) alert('No valid solutions found!');
+
+    drawGame(game);
+    return;
+  }
+
+  const rule = game.rules[underclueIdx] as UndercluedRule;
+  // Strip the Underclued rule before probing so admitsSolution() doesn't recurse.
+  const probeGame: Game = { ...game, rules: game.rules.filter((_, i) => i !== underclueIdx) };
+
   console.time();
-  const success = solveAdvanced(game);
+  const { forced, unsolvable } = findForcedCells(probeGame);
   console.timeEnd();
 
-  if (!success) alert('No valid solutions found!');
-
+  if (unsolvable) {
+    alert('Puzzle has no valid solution.');
+    return;
+  }
+  if (forced.length !== rule.count) {
+    alert(
+      `Underclued: found ${forced.length} forced cell(s) but rule requires exactly ${rule.count}. Board unchanged.`
+    );
+    return;
+  }
+  for (const { x, y, color } of forced) game.board[x][y] = color;
   drawGame(game);
 }
 
@@ -347,6 +373,14 @@ function handleAddRule(event: MouseEvent) {
 
       updateRuleList();
     });
+  } else if (rule == 'underclue') {
+    getInput(event, value => {
+      const num = parseInt(value);
+      if (isNaN(num) || num < 0) return;
+
+      game.rules.push({ kind: 'underclue', count: num });
+      updateRuleList();
+    });
   }
 }
 
@@ -366,6 +400,8 @@ function updateRuleList() {
       element.textContent = `Connect all ${rule.color == Cell.Dark ? 'dark' : 'light'} cells`;
     } else if (rule.kind == 'area') {
       element.textContent = `All ${rule.color == Cell.Dark ? 'dark' : 'light'} regions have area ${rule.count}`;
+    } else if (rule.kind == 'underclue') {
+      element.textContent = `Underclued: fill ${rule.count} forced cell${rule.count == 1 ? '' : 's'}`;
     }
 
     list.appendChild(element);

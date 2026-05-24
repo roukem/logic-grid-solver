@@ -1,5 +1,7 @@
 # Logic Grid Solver
 
+> This is a fork of alaggydev's logic-grid-solver project. I am simply using this to test out Claude Code and see if I can't improve on the project by adding additional rules and tile types for it to solve.
+
 A solver designed to solve logic grids in Islands of Insight automatically.
 
 This solver is VERY incomplete and ugly, only a subset of rules & symbols are implemented right now.
@@ -23,6 +25,7 @@ npm run dev
 
 - connected
 - area
+- underclued
 
 #### Symbols
 
