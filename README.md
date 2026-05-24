@@ -26,6 +26,7 @@ npm run dev
 - connected
 - area
 - underclued
+- bad patterns (lines only)
 
 #### Symbols
 

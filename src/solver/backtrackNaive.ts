@@ -1,5 +1,10 @@
 import { Game, Pos, Cell } from '.';
-import { verify_connected_rule, verify_area_rule, verify_underclue_rule } from './rules';
+import {
+  verify_connected_rule,
+  verify_area_rule,
+  verify_underclue_rule,
+  verify_bad_pattern_line_rule
+} from './rules';
 import {
   verify_area_symbol,
   verify_dart_symbol,
@@ -13,6 +18,7 @@ export function isValid(game: Game): boolean {
     if (rule.kind == 'connected' && !verify_connected_rule(game.board, rule)) return false;
     if (rule.kind == 'area' && !verify_area_rule(game.board, rule)) return false;
     if (rule.kind == 'underclue' && !verify_underclue_rule(game.board, rule)) return false;
+    if (rule.kind == 'bad_pattern_line' && !verify_bad_pattern_line_rule(game.board, rule)) return false;
   }
 
   for (const symbol of game.symbols) {

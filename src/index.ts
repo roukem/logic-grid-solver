@@ -381,6 +381,15 @@ function handleAddRule(event: MouseEvent) {
       game.rules.push({ kind: 'underclue', count: num });
       updateRuleList();
     });
+  } else if (rule == 'bad_pattern_line dark' || rule == 'bad_pattern_line light') {
+    getInput(event, value => {
+      const num = parseInt(value);
+      if (isNaN(num) || num < 1) return;
+
+      const color = rule == 'bad_pattern_line dark' ? Cell.Dark : Cell.Light;
+      game.rules.push({ kind: 'bad_pattern_line', color, length: num });
+      updateRuleList();
+    });
   }
 }
 
@@ -402,6 +411,8 @@ function updateRuleList() {
       element.textContent = `All ${rule.color == Cell.Dark ? 'dark' : 'light'} regions have area ${rule.count}`;
     } else if (rule.kind == 'underclue') {
       element.textContent = `Underclued: fill ${rule.count} forced cell${rule.count == 1 ? '' : 's'}`;
+    } else if (rule.kind == 'bad_pattern_line') {
+      element.textContent = `No ${rule.length} ${rule.color == Cell.Dark ? 'dark' : 'light'} cells in a row or column`;
     }
 
     list.appendChild(element);

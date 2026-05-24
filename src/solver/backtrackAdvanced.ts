@@ -1,6 +1,11 @@
 import { Pos, Game, Cell, Color, Symbol } from '.';
 import { isValid, naiveNextCell } from './backtrackNaive';
-import { verify_connected_rule, verify_area_rule, verify_underclue_rule } from './rules';
+import {
+  verify_connected_rule,
+  verify_area_rule,
+  verify_underclue_rule,
+  verify_bad_pattern_line_rule
+} from './rules';
 import {
   verify_area_symbol,
   verify_viewpoint_symbol,
@@ -137,6 +142,9 @@ export function isValidAdvanced(
 
     // Underclue (no-op verifier; actual logic lives in solveBoard via findForcedCells)
     if (rule.kind == 'underclue' && !verify_underclue_rule(game.board, rule)) return false;
+
+    // Bad pattern (line variant)
+    if (rule.kind == 'bad_pattern_line' && !verify_bad_pattern_line_rule(game.board, rule)) return false;
   }
 
   return true;
