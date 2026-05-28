@@ -15,8 +15,40 @@ let pixelCellSize = 50;
 let isMouseDown = false;
 let mouseCell: Cell = Cell.Empty;
 
+// ---- Undo history ----
+// Each entry is a serialized snapshot of `game` taken *before* a mutation, so
+// undo restores the state from immediately before the user's last gesture.
+// Capped to bound memory; one entry per gesture (a mouse-drag = one entry).
+const UNDO_LIMIT = 50;
+let history: string[] = [];
+let dragSnapshotTaken = false;
+
+function snapshotGame() {
+  const snapshot = JSON.stringify(game);
+  // Dedup: if nothing changed since the last snapshot (e.g. a failed solve),
+  // skip pushing — keeps the undo stack from filling with no-ops.
+  if (history.length > 0 && history[history.length - 1] === snapshot) return;
+  history.push(snapshot);
+  if (history.length > UNDO_LIMIT) history.shift();
+  updateUndoButton();
+}
+
+function updateUndoButton() {
+  const btn = document.getElementById('undo-button') as HTMLButtonElement | null;
+  if (btn) btn.disabled = history.length === 0;
+}
+
+function handleUndo() {
+  if (history.length === 0) return;
+  game = JSON.parse(history.pop()!);
+  drawGame(game);
+  updateRuleList();
+  updateUndoButton();
+}
+
 drawGame(game);
 updateRuleList();
+updateUndoButton();
 
 // Function to get the cell color
 function getCellColor(cell: Cell): string {
@@ -118,6 +150,13 @@ function handleMouseMove(event: MouseEvent) {
   const pos = getMouseCellPos(event);
   if (!pos) return;
 
+  // Snapshot once per drag — covers the case where mousedown started outside
+  // the canvas (no snapshot taken there) and the drag enters it now.
+  if (!dragSnapshotTaken) {
+    snapshotGame();
+    dragSnapshotTaken = true;
+  }
+
   game.board[pos.x][pos.y] = mouseCell;
   drawGame(game);
 }
@@ -127,6 +166,7 @@ function handleMouseDown(event: MouseEvent) {
   if (getMode() != 'cell' && getMode() != 'border') return;
 
   isMouseDown = true;
+  dragSnapshotTaken = false; // reset per drag; first cell paint will snapshot
 
   if (getMode() == 'border') {
     if (event.button == 0) {
@@ -147,6 +187,9 @@ function handleMouseDown(event: MouseEvent) {
   const pos = getMouseCellPos(event);
   if (!pos) return;
 
+  snapshotGame();
+  dragSnapshotTaken = true;
+
   game.board[pos.x][pos.y] = mouseCell;
   drawGame(game);
 }
@@ -155,6 +198,7 @@ function handleMouseDown(event: MouseEvent) {
 function handleMouseUp() {
   if (getMode() != 'cell' && getMode() != 'border') return;
   isMouseDown = false;
+  dragSnapshotTaken = false;
 }
 
 function getMouseCellPos(event: MouseEvent): Pos | null {
@@ -179,6 +223,7 @@ function resetGame() {
     return;
   }
 
+  snapshotGame();
   game = createEmptyGame(sizeX, sizeY);
 
   drawGame(game);
@@ -208,6 +253,8 @@ function createEmptyGame(sizeX: number, sizeY: number): Game {
 // Function to solve the game
 function solveBoard() {
   console.log('Solving the game...');
+
+  snapshotGame();
 
   const underclueIdx = game.rules.findIndex(r => r.kind == 'underclue');
   if (underclueIdx === -1) {
@@ -280,6 +327,7 @@ function handlePlaceSymbol(event: MouseEvent) {
 
   if (event.button == 2) {
     // Remove symbol
+    snapshotGame();
 
     // If a symbol already exists at pos, remove it
     game.symbols = game.symbols.filter(s => s.pos.x != pos.x || s.pos.y != pos.y);
@@ -299,6 +347,8 @@ function handlePlaceSymbol(event: MouseEvent) {
       getInput(event, value => {
         const num = parseInt(value);
         if (isNaN(num) || num < 1) return;
+
+        snapshotGame();
 
         let symbol: Symbol;
         if (mode == 'area') {
@@ -328,6 +378,7 @@ function handlePlaceSymbol(event: MouseEvent) {
     }
 
     // Symbols without input
+    snapshotGame();
 
     let symbol: Symbol;
     if (mode == 'galaxy') {
@@ -355,9 +406,11 @@ function handlePlaceSymbol(event: MouseEvent) {
 function handleAddRule(event: MouseEvent) {
   const rule = (document.getElementById('rule-select')! as HTMLSelectElement).value;
   if (rule == 'connected dark') {
+    snapshotGame();
     game.rules.push({ kind: 'connected', color: Cell.Dark });
     updateRuleList();
   } else if (rule == 'connected light') {
+    snapshotGame();
     game.rules.push({ kind: 'connected', color: Cell.Light });
     updateRuleList();
   } else if (rule == 'area dark' || rule == 'area light') {
@@ -365,6 +418,7 @@ function handleAddRule(event: MouseEvent) {
       const num = parseInt(value);
       if (isNaN(num) || num < 1) return;
 
+      snapshotGame();
       if (rule == 'area dark') {
         game.rules.push({ kind: 'area', color: Cell.Dark, count: num });
       } else if (rule == 'area light') {
@@ -378,6 +432,7 @@ function handleAddRule(event: MouseEvent) {
       const num = parseInt(value);
       if (isNaN(num) || num < 0) return;
 
+      snapshotGame();
       game.rules.push({ kind: 'underclue', count: num });
       updateRuleList();
     });
@@ -386,35 +441,44 @@ function handleAddRule(event: MouseEvent) {
       const num = parseInt(value);
       if (isNaN(num) || num < 1) return;
 
+      snapshotGame();
       const color = rule == 'bad_pattern_line dark' ? Cell.Dark : Cell.Light;
       game.rules.push({ kind: 'bad_pattern_line', color, length: num });
       updateRuleList();
     });
   } else if (rule == 'bad_pattern_t dark') {
+    snapshotGame();
     game.rules.push({ kind: 'bad_pattern_t', color: Cell.Dark });
     updateRuleList();
   } else if (rule == 'bad_pattern_t light') {
+    snapshotGame();
     game.rules.push({ kind: 'bad_pattern_t', color: Cell.Light });
     updateRuleList();
   } else if (rule == 'bad_pattern_checkerboard') {
+    snapshotGame();
     game.rules.push({ kind: 'bad_pattern_checkerboard' });
     updateRuleList();
   } else if (rule == 'bad_pattern_almost_square dark') {
+    snapshotGame();
     game.rules.push({ kind: 'bad_pattern_almost_square', color: Cell.Dark });
     updateRuleList();
   } else if (rule == 'bad_pattern_almost_square light') {
+    snapshotGame();
     game.rules.push({ kind: 'bad_pattern_almost_square', color: Cell.Light });
     updateRuleList();
   } else if (rule == 'bad_pattern_snake dark') {
+    snapshotGame();
     game.rules.push({ kind: 'bad_pattern_snake', color: Cell.Dark });
     updateRuleList();
   } else if (rule == 'bad_pattern_snake light') {
+    snapshotGame();
     game.rules.push({ kind: 'bad_pattern_snake', color: Cell.Light });
     updateRuleList();
   }
 }
 
 function handleClearRules() {
+  snapshotGame();
   game.rules = [];
   updateRuleList();
 }
@@ -455,7 +519,11 @@ function handleImport(event: MouseEvent) {
     if (value == '') return;
 
     try {
-      game = JSON.parse(value);
+      const parsed = JSON.parse(value);
+      // Snapshot only after a successful parse — a malformed input shouldn't
+      // pollute the undo stack.
+      snapshotGame();
+      game = parsed;
 
       drawGame(game);
       updateRuleList();
@@ -470,8 +538,10 @@ function handlePreset(event: Event) {
   const preset = (event.target as HTMLSelectElement).value;
 
   if (preset == 'none') {
+    // resetGame() already snapshots
     resetGame();
   } else {
+    snapshotGame();
     game = JSON.parse(presets[parseInt(preset) - 1]);
   }
   drawGame(game);
@@ -496,5 +566,6 @@ document.getElementById('preset-select')!.addEventListener('change', handlePrese
 document.getElementById('import-button')!.addEventListener('click', handleImport);
 document.getElementById('export-button')!.addEventListener('click', handleExport);
 document.getElementById('solve-button')!.addEventListener('click', solveBoard);
+document.getElementById('undo-button')!.addEventListener('click', handleUndo);
 
 canvas.addEventListener('mousedown', handlePlaceSymbol);
