@@ -21,6 +21,10 @@ export interface ForcedCell {
 export interface UndercluedResult {
   forced: ForcedCell[];
   unsolvable: boolean;
+  // Set to true if isCancelled() returned true during the per-cell scan.
+  // When cancelled, `forced` reflects only the cells probed so far — callers
+  // should treat the result as discarded rather than partial.
+  cancelled: boolean;
 }
 
 function cloneBoard(board: Board): Board {
@@ -50,6 +54,11 @@ const YIELD_EVERY = 4;
 
 export interface FindForcedCellsOptions {
   onProgress?: (done: number, total: number) => void;
+  // Polled between cell probes. If it returns true, the scan aborts and the
+  // returned UndercluedResult has cancelled=true. Cancellation cannot
+  // interrupt a single solveAdvanced call in progress — it takes effect at
+  // the inter-cell boundary (which is also the yield point).
+  isCancelled?: () => boolean;
 }
 
 // Determine every forced cell on the current board.
@@ -74,7 +83,7 @@ export async function findForcedCells(
   game: Game,
   options: FindForcedCellsOptions = {}
 ): Promise<UndercluedResult> {
-  const { onProgress } = options;
+  const { onProgress, isCancelled } = options;
 
   // Collect originally-empty cells once so the iteration order doesn't change
   // as the candidate solve fills cells in.
@@ -90,13 +99,20 @@ export async function findForcedCells(
   // Step 1: find a candidate solution.
   const candidateBoard = cloneBoard(game.board);
   if (!solveAdvanced(makeProbe(game, candidateBoard))) {
-    return { forced: [], unsolvable: true };
+    return { forced: [], unsolvable: true, cancelled: false };
   }
 
   // Step 2: for each empty cell, probe the opposite colour. If that fails,
   // the candidate's colour is forced for that cell.
   const forced: ForcedCell[] = [];
   for (let i = 0; i < emptyCells.length; i++) {
+    // Cancel check at the cell boundary. We can't interrupt a single
+    // solveAdvanced call once it's started, so cancellation lag is bounded
+    // by the slowest individual probe.
+    if (isCancelled && isCancelled()) {
+      return { forced, unsolvable: false, cancelled: true };
+    }
+
     const { x, y } = emptyCells[i];
     const candidateColor = candidateBoard[x][y] as Color;
     const oppositeColor: Color = candidateColor === Cell.Light ? Cell.Dark : Cell.Light;
@@ -113,5 +129,5 @@ export async function findForcedCells(
     }
   }
 
-  return { forced, unsolvable: false };
+  return { forced, unsolvable: false, cancelled: false };
 }

@@ -423,7 +423,7 @@ function createEmptyGame(sizeX: number, sizeY: number): Game {
   };
 }
 
-// ---- Underclued progress UI ----
+// ---- Underclued progress + cancel UI ----
 // A transient <li> inside the existing #rule-list, swapped in while the async
 // findForcedCells scan is running. No new chrome required.
 function showUndercluedProgress(done: number, total: number) {
@@ -444,9 +444,52 @@ function clearUndercluedProgress() {
   if (el) el.remove();
 }
 
+function showCancelButton() {
+  const btn = document.getElementById('cancel-solve-button') as HTMLButtonElement | null;
+  if (btn) btn.hidden = false;
+  showCancelNotice();
+}
+
+function hideCancelButton() {
+  const btn = document.getElementById('cancel-solve-button') as HTMLButtonElement | null;
+  if (btn) btn.hidden = true;
+  hideCancelNotice();
+}
+
+// A second transient <li> below the progress indicator that sets expectations
+// about cancel latency. Cancel can't interrupt a single solveAdvanced call in
+// progress — on heavy puzzles, an individual probe can take many seconds, so
+// the click takes that long to register at the next inter-cell boundary.
+function showCancelNotice() {
+  const list = document.getElementById('rule-list')!;
+  let noticeEl = document.getElementById('cancel-notice');
+  if (!noticeEl) {
+    noticeEl = document.createElement('li');
+    noticeEl.id = 'cancel-notice';
+    noticeEl.style.fontStyle = 'italic';
+    noticeEl.style.color = '#888';
+    noticeEl.style.fontSize = '0.9em';
+    noticeEl.textContent =
+      'Note: Cancel may take 30+ seconds to take effect on complex puzzles — the browser must finish its current cell probe first.';
+    list.appendChild(noticeEl);
+  }
+}
+
+function hideCancelNotice() {
+  const el = document.getElementById('cancel-notice');
+  if (el) el.remove();
+}
+
 // Re-entry guard: prevents a second Solve click from racing while an async
 // Underclued scan is still running.
 let solving = false;
+
+// Cancellation flag. Set by handleCancelSolve(); read by findForcedCells via
+// the isCancelled callback. Reset at the start of each Underclued scan.
+let cancelSolve = false;
+function handleCancelSolve() {
+  cancelSolve = true;
+}
 
 // Function to solve the game
 async function solveBoard() {
@@ -473,13 +516,25 @@ async function solveBoard() {
     // Strip the Underclued rule before probing so admitsSolution() doesn't recurse.
     const probeGame: Game = { ...game, rules: game.rules.filter((_, i) => i !== underclueIdx) };
 
+    // Reset the cancellation flag and reveal the Cancel button for the
+    // duration of the scan. The button sets cancelSolve = true; the scan
+    // polls it between cell probes.
+    cancelSolve = false;
+    showCancelButton();
+
     console.time();
-    const { forced, unsolvable } = await findForcedCells(probeGame, {
-      onProgress: showUndercluedProgress
+    const { forced, unsolvable, cancelled } = await findForcedCells(probeGame, {
+      onProgress: showUndercluedProgress,
+      isCancelled: () => cancelSolve
     });
     console.timeEnd();
     clearUndercluedProgress();
+    hideCancelButton();
 
+    if (cancelled) {
+      alert('Underclued: solve cancelled. Board unchanged.');
+      return;
+    }
     if (unsolvable) {
       alert('Puzzle has no valid solution.');
       return;
@@ -495,6 +550,7 @@ async function solveBoard() {
   } finally {
     solving = false;
     clearUndercluedProgress();
+    hideCancelButton();
   }
 }
 
@@ -803,6 +859,7 @@ document.getElementById('export-button')!.addEventListener('click', handleExport
 document.getElementById('solve-button')!.addEventListener('click', solveBoard);
 document.getElementById('undo-button')!.addEventListener('click', handleUndo);
 document.getElementById('commit-group-button')!.addEventListener('click', handleCommitGroup);
+document.getElementById('cancel-solve-button')!.addEventListener('click', handleCancelSolve);
 document.getElementById('item-select')!.addEventListener('change', updateCommitGroupVisibility);
 
 canvas.addEventListener('mousedown', handlePlaceSymbol);
