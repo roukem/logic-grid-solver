@@ -7,7 +7,9 @@ import {
   verify_bad_pattern_t_rule,
   verify_bad_pattern_checkerboard_rule,
   verify_bad_pattern_almost_square_rule,
-  verify_bad_pattern_snake_rule
+  verify_bad_pattern_snake_rule,
+  verify_off_by_one_rule,
+  verifyWithOffByOne
 } from './rules';
 import {
   verify_area_symbol,
@@ -27,12 +29,13 @@ export function isValid(game: Game): boolean {
     if (rule.kind == 'bad_pattern_checkerboard' && !verify_bad_pattern_checkerboard_rule(game.board, rule)) return false;
     if (rule.kind == 'bad_pattern_almost_square' && !verify_bad_pattern_almost_square_rule(game.board, rule)) return false;
     if (rule.kind == 'bad_pattern_snake' && !verify_bad_pattern_snake_rule(game.board, rule)) return false;
+    if (rule.kind == 'off_by_one' && !verify_off_by_one_rule(game.board, rule)) return false;
   }
 
   for (const symbol of game.symbols) {
-    if (symbol.kind == 'area' && !verify_area_symbol(game.board, symbol)) return false;
+    if (symbol.kind == 'area' && !verifyWithOffByOne(game, symbol, verify_area_symbol)) return false;
     if (symbol.kind == 'dart' && !verify_dart_symbol(game.board, symbol)) return false;
-    if (symbol.kind == 'viewpoint' && !verify_viewpoint_symbol(game.board, symbol)) return false;
+    if (symbol.kind == 'viewpoint' && !verifyWithOffByOne(game, symbol, verify_viewpoint_symbol)) return false;
     if (symbol.kind == 'galaxy' && !verify_galaxy_symbol(game, symbol)) return false;
     if (symbol.kind == 'lotus' && !verify_lotus_symbol(game, symbol)) return false;
   }

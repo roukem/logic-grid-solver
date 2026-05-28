@@ -6,7 +6,8 @@ import {
   BadPatternTRule,
   BadPatternCheckerboardRule,
   BadPatternAlmostSquareRule,
-  BadPatternSnakeRule
+  BadPatternSnakeRule,
+  OffByOneRule
 } from './rules';
 import { AreaSymbol, DartSymbol, ViewpointSymbol, GalaxySymbol, LotusSymbol } from './symbols';
 
@@ -32,7 +33,8 @@ export type Rule =
   | BadPatternTRule
   | BadPatternCheckerboardRule
   | BadPatternAlmostSquareRule
-  | BadPatternSnakeRule;
+  | BadPatternSnakeRule
+  | OffByOneRule;
 
 export type Symbol = AreaSymbol | DartSymbol | ViewpointSymbol | GalaxySymbol | LotusSymbol;
 

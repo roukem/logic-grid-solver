@@ -8,7 +8,9 @@ import {
   verify_bad_pattern_t_rule,
   verify_bad_pattern_checkerboard_rule,
   verify_bad_pattern_almost_square_rule,
-  verify_bad_pattern_snake_rule
+  verify_bad_pattern_snake_rule,
+  verify_off_by_one_rule,
+  verifyWithOffByOne
 } from './rules';
 import {
   verify_area_symbol,
@@ -97,11 +99,11 @@ export function isValidAdvanced(
         let affected_cells: Pos[] | false;
 
         if (adj.symbol.kind == 'area') {
-          // Area
-          affected_cells = verify_area_symbol(game.board, adj.symbol);
+          // Area (off-by-one aware)
+          affected_cells = verifyWithOffByOne(game, adj.symbol, verify_area_symbol);
         } else if (adj.symbol.kind == 'viewpoint') {
-          // Viewpoint
-          affected_cells = verify_viewpoint_symbol(game.board, adj.symbol);
+          // Viewpoint (off-by-one aware)
+          affected_cells = verifyWithOffByOne(game, adj.symbol, verify_viewpoint_symbol);
         } else if (adj.symbol.kind == 'galaxy') {
           // Galaxy
           affected_cells = verify_galaxy_symbol(game, adj.symbol);
@@ -133,7 +135,7 @@ export function isValidAdvanced(
       )
         continue;
 
-      if (!verify_area_symbol(game.board, symbol)) return false;
+      if (!verifyWithOffByOne(game, symbol, verify_area_symbol)) return false;
     }
   }
 
@@ -155,6 +157,10 @@ export function isValidAdvanced(
     if (rule.kind == 'bad_pattern_checkerboard' && !verify_bad_pattern_checkerboard_rule(game.board, rule)) return false;
     if (rule.kind == 'bad_pattern_almost_square' && !verify_bad_pattern_almost_square_rule(game.board, rule)) return false;
     if (rule.kind == 'bad_pattern_snake' && !verify_bad_pattern_snake_rule(game.board, rule)) return false;
+
+    // Off-by-one is a meta-rule; its real effect is applied inside the area /
+    // viewpoint symbol verifications above via verifyWithOffByOne.
+    if (rule.kind == 'off_by_one' && !verify_off_by_one_rule(game.board, rule)) return false;
   }
 
   // Joined-cell groups: all coloured cells in a group must agree on colour.
@@ -193,11 +199,11 @@ export function solveAdvanced(game: Game): boolean {
   for (const symbol of game.symbols) {
     let result: Pos[] | false;
     if (symbol.kind == 'area') {
-      result = verify_area_symbol(game.board, symbol);
+      result = verifyWithOffByOne(game, symbol, verify_area_symbol);
     } else if (symbol.kind == 'dart') {
       result = buildDartAdjacency(game.board, symbol);
     } else if (symbol.kind == 'viewpoint') {
-      result = verify_viewpoint_symbol(game.board, symbol);
+      result = verifyWithOffByOne(game, symbol, verify_viewpoint_symbol);
     } else if (symbol.kind == 'galaxy') {
       result = verify_galaxy_symbol(game, symbol);
     } else if (symbol.kind == 'lotus') {

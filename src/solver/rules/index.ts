@@ -2,6 +2,12 @@ export { AreaRule, verifyAreaRule as verify_area_rule } from './area';
 export { ConnectedRule, verifyConnectedRule as verify_connected_rule } from './connected';
 export { UndercluedRule, verifyUndercluedRule as verify_underclue_rule, findForcedCells } from './underclued';
 export {
+  OffByOneRule,
+  verifyOffByOneRule as verify_off_by_one_rule,
+  verifyWithOffByOne,
+  isOffByOneActive
+} from './off_by_one';
+export {
   BadPatternLineRule,
   verifyBadPatternLineRule as verify_bad_pattern_line_rule,
   BadPatternTRule,
