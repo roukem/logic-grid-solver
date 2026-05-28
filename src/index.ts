@@ -423,44 +423,79 @@ function createEmptyGame(sizeX: number, sizeY: number): Game {
   };
 }
 
+// ---- Underclued progress UI ----
+// A transient <li> inside the existing #rule-list, swapped in while the async
+// findForcedCells scan is running. No new chrome required.
+function showUndercluedProgress(done: number, total: number) {
+  const list = document.getElementById('rule-list')!;
+  let statusEl = document.getElementById('underclued-progress');
+  if (!statusEl) {
+    statusEl = document.createElement('li');
+    statusEl.id = 'underclued-progress';
+    statusEl.style.fontStyle = 'italic';
+    statusEl.style.color = '#666';
+    list.appendChild(statusEl);
+  }
+  statusEl.textContent = `Underclued: checking cell ${done} of ${total}…`;
+}
+
+function clearUndercluedProgress() {
+  const el = document.getElementById('underclued-progress');
+  if (el) el.remove();
+}
+
+// Re-entry guard: prevents a second Solve click from racing while an async
+// Underclued scan is still running.
+let solving = false;
+
 // Function to solve the game
-function solveBoard() {
-  console.log('Solving the game...');
+async function solveBoard() {
+  if (solving) return;
+  solving = true;
+  try {
+    console.log('Solving the game...');
 
-  snapshotGame();
+    snapshotGame();
 
-  const underclueIdx = game.rules.findIndex(r => r.kind == 'underclue');
-  if (underclueIdx === -1) {
+    const underclueIdx = game.rules.findIndex(r => r.kind == 'underclue');
+    if (underclueIdx === -1) {
+      console.time();
+      const success = solveAdvanced(game);
+      console.timeEnd();
+
+      if (!success) alert('No valid solutions found!');
+
+      drawGame(game);
+      return;
+    }
+
+    const rule = game.rules[underclueIdx] as UndercluedRule;
+    // Strip the Underclued rule before probing so admitsSolution() doesn't recurse.
+    const probeGame: Game = { ...game, rules: game.rules.filter((_, i) => i !== underclueIdx) };
+
     console.time();
-    const success = solveAdvanced(game);
+    const { forced, unsolvable } = await findForcedCells(probeGame, {
+      onProgress: showUndercluedProgress
+    });
     console.timeEnd();
+    clearUndercluedProgress();
 
-    if (!success) alert('No valid solutions found!');
-
+    if (unsolvable) {
+      alert('Puzzle has no valid solution.');
+      return;
+    }
+    if (forced.length !== rule.count) {
+      alert(
+        `Underclued: found ${forced.length} forced cell(s) but rule requires exactly ${rule.count}. Board unchanged.`
+      );
+      return;
+    }
+    for (const { x, y, color } of forced) game.board[x][y] = color;
     drawGame(game);
-    return;
+  } finally {
+    solving = false;
+    clearUndercluedProgress();
   }
-
-  const rule = game.rules[underclueIdx] as UndercluedRule;
-  // Strip the Underclued rule before probing so admitsSolution() doesn't recurse.
-  const probeGame: Game = { ...game, rules: game.rules.filter((_, i) => i !== underclueIdx) };
-
-  console.time();
-  const { forced, unsolvable } = findForcedCells(probeGame);
-  console.timeEnd();
-
-  if (unsolvable) {
-    alert('Puzzle has no valid solution.');
-    return;
-  }
-  if (forced.length !== rule.count) {
-    alert(
-      `Underclued: found ${forced.length} forced cell(s) but rule requires exactly ${rule.count}. Board unchanged.`
-    );
-    return;
-  }
-  for (const { x, y, color } of forced) game.board[x][y] = color;
-  drawGame(game);
 }
 
 // Function to get the item mode
