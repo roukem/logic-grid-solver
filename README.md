@@ -26,7 +26,7 @@ npm run dev
 - connected
 - area
 - underclued
-- bad patterns (lines, T-shapes, checkerboards, almost-squares, snakes)
+- bad patterns (lines, T-shapes, checkerboards, almost-squares, snakes, squares)
 - off by one (area/viewpoint symbol counts are interpreted as ±1; a stored "1" must be 2)
 
 #### Symbols

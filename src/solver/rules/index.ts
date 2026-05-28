@@ -17,5 +17,7 @@ export {
   BadPatternAlmostSquareRule,
   verifyBadPatternAlmostSquareRule as verify_bad_pattern_almost_square_rule,
   BadPatternSnakeRule,
-  verifyBadPatternSnakeRule as verify_bad_pattern_snake_rule
+  verifyBadPatternSnakeRule as verify_bad_pattern_snake_rule,
+  BadPatternSquareRule,
+  verifyBadPatternSquareRule as verify_bad_pattern_square_rule
 } from './bad_pattern';

@@ -9,6 +9,7 @@ import {
   verify_bad_pattern_checkerboard_rule,
   verify_bad_pattern_almost_square_rule,
   verify_bad_pattern_snake_rule,
+  verify_bad_pattern_square_rule,
   verify_off_by_one_rule,
   verifyWithOffByOne
 } from './rules';
@@ -157,6 +158,7 @@ export function isValidAdvanced(
     if (rule.kind == 'bad_pattern_checkerboard' && !verify_bad_pattern_checkerboard_rule(game.board, rule)) return false;
     if (rule.kind == 'bad_pattern_almost_square' && !verify_bad_pattern_almost_square_rule(game.board, rule)) return false;
     if (rule.kind == 'bad_pattern_snake' && !verify_bad_pattern_snake_rule(game.board, rule)) return false;
+    if (rule.kind == 'bad_pattern_square' && !verify_bad_pattern_square_rule(game.board, rule)) return false;
 
     // Off-by-one is a meta-rule; its real effect is applied inside the area /
     // viewpoint symbol verifications above via verifyWithOffByOne.

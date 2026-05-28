@@ -8,6 +8,7 @@ import {
   verify_bad_pattern_checkerboard_rule,
   verify_bad_pattern_almost_square_rule,
   verify_bad_pattern_snake_rule,
+  verify_bad_pattern_square_rule,
   verify_off_by_one_rule,
   verifyWithOffByOne
 } from './rules';
@@ -29,6 +30,7 @@ export function isValid(game: Game): boolean {
     if (rule.kind == 'bad_pattern_checkerboard' && !verify_bad_pattern_checkerboard_rule(game.board, rule)) return false;
     if (rule.kind == 'bad_pattern_almost_square' && !verify_bad_pattern_almost_square_rule(game.board, rule)) return false;
     if (rule.kind == 'bad_pattern_snake' && !verify_bad_pattern_snake_rule(game.board, rule)) return false;
+    if (rule.kind == 'bad_pattern_square' && !verify_bad_pattern_square_rule(game.board, rule)) return false;
     if (rule.kind == 'off_by_one' && !verify_off_by_one_rule(game.board, rule)) return false;
   }
 

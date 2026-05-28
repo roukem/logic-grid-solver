@@ -131,6 +131,29 @@ export function verifyBadPatternCheckerboardRule(
   return true;
 }
 
+// ---------- Square ----------
+// A 2x2 block of all the same color. Distinct from "Almost Square" (3+1).
+
+export interface BadPatternSquareRule {
+  kind: 'bad_pattern_square';
+  color: Color;
+}
+
+export function verifyBadPatternSquareRule(board: Board, rule: BadPatternSquareRule): boolean {
+  const c = rule.color;
+  for (let x = 0; x < board.length - 1; x++) {
+    for (let y = 0; y < board[0].length - 1; y++) {
+      if (
+        board[x][y] === c &&
+        board[x][y + 1] === c &&
+        board[x + 1][y] === c &&
+        board[x + 1][y + 1] === c
+      ) return false;
+    }
+  }
+  return true;
+}
+
 // ---------- Snake / zig-zag ----------
 // 4 same-color cells forming a connected zig-zag. Looks like a 2x2 square
 // where one row (or column) has been shifted over by one. 4 orientations:

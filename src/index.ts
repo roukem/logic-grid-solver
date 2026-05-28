@@ -654,6 +654,14 @@ function handleAddRule(event: MouseEvent) {
     snapshotGame();
     game.rules.push({ kind: 'bad_pattern_snake', color: Cell.Light });
     updateRuleList();
+  } else if (rule == 'bad_pattern_square dark') {
+    snapshotGame();
+    game.rules.push({ kind: 'bad_pattern_square', color: Cell.Dark });
+    updateRuleList();
+  } else if (rule == 'bad_pattern_square light') {
+    snapshotGame();
+    game.rules.push({ kind: 'bad_pattern_square', color: Cell.Light });
+    updateRuleList();
   } else if (rule == 'off_by_one') {
     snapshotGame();
     game.rules.push({ kind: 'off_by_one' });
@@ -692,6 +700,8 @@ function updateRuleList() {
       element.textContent = `No 2×2 with three ${majority} cells and one ${minority} cell`;
     } else if (rule.kind == 'bad_pattern_snake') {
       element.textContent = `No snake/zig-zag of ${rule.color == Cell.Dark ? 'dark' : 'light'} cells`;
+    } else if (rule.kind == 'bad_pattern_square') {
+      element.textContent = `No 2×2 square of ${rule.color == Cell.Dark ? 'dark' : 'light'} cells`;
     } else if (rule.kind == 'off_by_one') {
       element.textContent = `Area/viewpoint numbers off by one (±1)`;
     }
