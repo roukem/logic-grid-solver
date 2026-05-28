@@ -1,5 +1,5 @@
 import presets from './presets';
-import { Board, Symbol, Pos, Cell, Direction, Game } from './solver';
+import { Board, Symbol, Pos, Cell, Direction, Game, findGroupContaining, getSymbolCenter } from './solver';
 import { solveAdvanced } from './solver/backtrackAdvanced';
 import { findForcedCells, UndercluedRule } from './solver/rules';
 
@@ -23,6 +23,19 @@ const UNDO_LIMIT = 50;
 let history: string[] = [];
 let dragSnapshotTaken = false;
 
+// ---- Cell-grouping state ----
+// pendingGroup is the in-progress selection the user is building in Join mode.
+// Cells appear here once clicked; the user finalizes the group with Commit Group,
+// at which point it's pushed to game.groups and pendingGroup is cleared. Purely
+// UI state — not serialized.
+let pendingGroup: Pos[] = [];
+
+// Older presets and imported games may not have a groups field. Older save
+// formats need it filled in so the rest of the code can iterate freely.
+function ensureGroups(g: Game) {
+  if (!g.groups) g.groups = [];
+}
+
 function snapshotGame() {
   const snapshot = JSON.stringify(game);
   // Dedup: if nothing changed since the last snapshot (e.g. a failed solve),
@@ -41,14 +54,114 @@ function updateUndoButton() {
 function handleUndo() {
   if (history.length === 0) return;
   game = JSON.parse(history.pop()!);
+  ensureGroups(game);
   drawGame(game);
   updateRuleList();
   updateUndoButton();
 }
 
+// ---- Join mode helpers ----
+
+function posIndexInList(list: Pos[], pos: Pos): number {
+  return list.findIndex(p => p.x === pos.x && p.y === pos.y);
+}
+
+function findGroupIndexContaining(g: Game, pos: Pos): number {
+  for (let i = 0; i < g.groups.length; i++) {
+    if (posIndexInList(g.groups[i], pos) !== -1) return i;
+  }
+  return -1;
+}
+
+function handleJoinLeftClick(pos: Pos) {
+  // If this cell is already part of a committed group, do nothing — joining
+  // an already-joined cell into a new group would be ambiguous. The user can
+  // right-click the committed group to delete it first.
+  if (findGroupIndexContaining(game, pos) !== -1) return;
+
+  const idx = posIndexInList(pendingGroup, pos);
+  if (idx === -1) {
+    pendingGroup.push(pos);
+  } else {
+    pendingGroup.splice(idx, 1);
+  }
+  drawGame(game);
+}
+
+function handleJoinRightClick(pos: Pos) {
+  // Delete the committed group containing this cell, if any.
+  const idx = findGroupIndexContaining(game, pos);
+  if (idx === -1) return;
+  snapshotGame();
+  game.groups.splice(idx, 1);
+  drawGame(game);
+}
+
+// BFS over the pending cells using rook adjacency only. Returns true if every
+// pending cell is reachable from the first. Used at commit time to forbid
+// disconnected "groups" — those would silently get treated as one group whose
+// centroid lands somewhere odd, which is never what the user wants.
+function isPendingGroupContiguous(): boolean {
+  if (pendingGroup.length <= 1) return true;
+
+  const key = (x: number, y: number) => `${x},${y}`;
+  const inGroup = new Set(pendingGroup.map(p => key(p.x, p.y)));
+  const visited = new Set<string>();
+  const queue: Pos[] = [pendingGroup[0]];
+  visited.add(key(pendingGroup[0].x, pendingGroup[0].y));
+
+  while (queue.length > 0) {
+    const cur = queue.pop()!;
+    const neighbours: Pos[] = [
+      { x: cur.x - 1, y: cur.y },
+      { x: cur.x + 1, y: cur.y },
+      { x: cur.x, y: cur.y - 1 },
+      { x: cur.x, y: cur.y + 1 }
+    ];
+    for (const n of neighbours) {
+      const k = key(n.x, n.y);
+      if (inGroup.has(k) && !visited.has(k)) {
+        visited.add(k);
+        queue.push(n);
+      }
+    }
+  }
+
+  return visited.size === pendingGroup.length;
+}
+
+function handleCommitGroup() {
+  // A 1-cell "group" is meaningless (a single cell is always its own color).
+  // Require at least 2 to make a real group.
+  if (pendingGroup.length < 2) {
+    pendingGroup = [];
+    drawGame(game);
+    return;
+  }
+  if (!isPendingGroupContiguous()) {
+    alert('Joined cells must form a single connected shape (no diagonals, no gaps).');
+    // Leave pendingGroup intact so the user can fix the selection.
+    return;
+  }
+  snapshotGame();
+  game.groups.push(pendingGroup);
+  pendingGroup = [];
+  drawGame(game);
+}
+
+// Commit Group is only meaningful while the user is composing a join. Hiding
+// it elsewhere keeps the toolbar from offering an action that has no effect
+// in the current mode.
+function updateCommitGroupVisibility() {
+  const btn = document.getElementById('commit-group-button') as HTMLButtonElement | null;
+  if (!btn) return;
+  btn.style.display = getMode() === 'join' ? '' : 'none';
+}
+
 drawGame(game);
 updateRuleList();
 updateUndoButton();
+updateCommitGroupVisibility();
 
 // Function to get the cell color
 function getCellColor(cell: Cell): string {
@@ -72,29 +185,78 @@ function drawGame(game: Game) {
   // Clear the canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Loop through each cell in the board
+  // Build a fast lookup: cell -> committed-group index (-1 if none).
+  const groupOf: number[][] = [];
+  for (let x = 0; x < game.sizeX; x++) {
+    groupOf[x] = [];
+    for (let y = 0; y < game.sizeY; y++) groupOf[x][y] = -1;
+  }
+  for (let g = 0; g < game.groups.length; g++) {
+    for (const p of game.groups[g]) {
+      if (p.x >= 0 && p.x < game.sizeX && p.y >= 0 && p.y < game.sizeY) groupOf[p.x][p.y] = g;
+    }
+  }
+  const sameGroup = (x1: number, y1: number, x2: number, y2: number): boolean => {
+    if (x2 < 0 || x2 >= game.sizeX || y2 < 0 || y2 >= game.sizeY) return false;
+    const a = groupOf[x1][y1], b = groupOf[x2][y2];
+    return a !== -1 && a === b;
+  };
+
+  // Pass 1: fill cells.
   for (let x = 0; x < game.sizeX; x++) {
     for (let y = 0; y < game.sizeY; y++) {
-      const pixelX = y * pixelCellSize;
-      const pixelY = x * pixelCellSize;
-
-      const cell = game.board[x][y];
-      const color = getCellColor(cell);
-
-      // Draw the cell
-      ctx.fillStyle = color;
-      ctx.fillRect(pixelX, pixelY, pixelCellSize, pixelCellSize);
-
-      // Draw the border
-      ctx.strokeStyle = '#404040';
-      ctx.strokeRect(pixelX, pixelY, pixelCellSize, pixelCellSize);
+      ctx.fillStyle = getCellColor(game.board[x][y]);
+      ctx.fillRect(y * pixelCellSize, x * pixelCellSize, pixelCellSize, pixelCellSize);
     }
   }
 
-  // Draw the symbols
+  // Pass 2: stroke per-cell edges, but skip any edge shared with a same-group
+  // neighbour — that's what makes a joined group visually look like one shape.
+  ctx.strokeStyle = '#404040';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < game.sizeX; x++) {
+    for (let y = 0; y < game.sizeY; y++) {
+      const px = y * pixelCellSize;
+      const py = x * pixelCellSize;
+      const r = px + pixelCellSize;
+      const b = py + pixelCellSize;
+      if (!sameGroup(x, y, x - 1, y)) { ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(r, py); ctx.stroke(); }
+      if (!sameGroup(x, y, x + 1, y)) { ctx.beginPath(); ctx.moveTo(px, b);  ctx.lineTo(r, b);  ctx.stroke(); }
+      if (!sameGroup(x, y, x, y - 1)) { ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, b); ctx.stroke(); }
+      if (!sameGroup(x, y, x, y + 1)) { ctx.beginPath(); ctx.moveTo(r, py);  ctx.lineTo(r, b);  ctx.stroke(); }
+    }
+  }
+
+  // Pass 3: highlight cells currently in the in-progress Join selection.
+  if (pendingGroup.length > 0) {
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 3;
+    const inset = 4;
+    for (const p of pendingGroup) {
+      ctx.strokeRect(
+        p.y * pixelCellSize + inset,
+        p.x * pixelCellSize + inset,
+        pixelCellSize - inset * 2,
+        pixelCellSize - inset * 2
+      );
+    }
+    ctx.lineWidth = 1;
+  }
+
+  // Draw the symbols.
+  // For galaxy/lotus (symmetry symbols), the draw center follows the group
+  // centroid when the symbol sits on a grouped cell — visually that lands on
+  // the corner / edge where the group's cells meet, which matches what the
+  // verifier uses for symmetry math. Other symbol kinds are tied to a single
+  // cell and stay put.
   for (const symbol of game.symbols) {
-    const pixelX = symbol.pos.y * pixelCellSize;
-    const pixelY = symbol.pos.x * pixelCellSize;
+    const drawCenter =
+      symbol.kind === 'galaxy' || symbol.kind === 'lotus'
+        ? getSymbolCenter(game, symbol.pos)
+        : { x: symbol.pos.x, y: symbol.pos.y };
+
+    const cx = drawCenter.y * pixelCellSize + pixelCellSize / 2;
+    const cy = drawCenter.x * pixelCellSize + pixelCellSize / 2;
 
     ctx.fillStyle = game.board[symbol.pos.x][symbol.pos.y] == Cell.Dark ? 'white' : 'black';
     ctx.textAlign = 'center';
@@ -103,7 +265,7 @@ function drawGame(game: Game) {
     // Draw the number on top of the cell
     if (symbol.kind == 'area' || symbol.kind == 'viewpoint' || symbol.kind == 'dart') {
       ctx.font = 'bold ' + Math.floor(pixelCellSize / 2) + 'px Arial';
-      ctx.fillText(symbol.count.toString(), pixelX + pixelCellSize / 2, pixelY + pixelCellSize / 2);
+      ctx.fillText(symbol.count.toString(), cx, cy);
     }
 
     if (symbol.kind == 'lotus') {
@@ -118,7 +280,7 @@ function drawGame(game: Game) {
       } else if (symbol.rotation == 3) {
         text = '⤡';
       }
-      ctx.fillText(text!, pixelX + pixelCellSize / 2, pixelY + pixelCellSize / 2);
+      ctx.fillText(text!, cx, cy);
     }
 
     if (symbol.kind != 'area') {
@@ -137,7 +299,7 @@ function drawGame(game: Game) {
         }
       }
 
-      ctx.fillText(text, pixelX + pixelCellSize / 2, pixelY + pixelCellSize / 1.25);
+      ctx.fillText(text, cx, cy + pixelCellSize * 0.3);
     }
   }
 }
@@ -163,6 +325,15 @@ function handleMouseMove(event: MouseEvent) {
 
 // Function to handle cell color change on mouse down
 function handleMouseDown(event: MouseEvent) {
+  // Join mode has its own handling: discrete clicks, not a paint-drag.
+  if (getMode() == 'join') {
+    const pos = getMouseCellPos(event);
+    if (!pos) return;
+    if (event.button == 0) handleJoinLeftClick(pos);
+    else if (event.button == 2) handleJoinRightClick(pos);
+    return;
+  }
+
   if (getMode() != 'cell' && getMode() != 'border') return;
 
   isMouseDown = true;
@@ -225,6 +396,7 @@ function resetGame() {
 
   snapshotGame();
   game = createEmptyGame(sizeX, sizeY);
+  pendingGroup = [];
 
   drawGame(game);
   updateRuleList();
@@ -245,6 +417,7 @@ function createEmptyGame(sizeX: number, sizeY: number): Game {
     board,
     rules: [],
     symbols: [],
+    groups: [],
     sizeX,
     sizeY
   };
@@ -320,17 +493,24 @@ function getInput(event: MouseEvent, out: (value: string) => void) {
 
 function handlePlaceSymbol(event: MouseEvent) {
   const mode = getMode();
-  if (mode == 'cell' || mode == 'border') return;
+  if (mode == 'cell' || mode == 'border' || mode == 'join') return;
 
   const pos = getMouseCellPos(event);
   if (!pos) return;
 
   if (event.button == 2) {
-    // Remove symbol
+    // Remove symbol. Group-aware: a galaxy/lotus on a 2x2 group renders at the
+    // group's centroid (between cells), so the user might right-click any cell
+    // of the group to remove it. We accept that by treating a click anywhere
+    // in a group as a click on the symbol anchored to that group.
     snapshotGame();
 
-    // If a symbol already exists at pos, remove it
-    game.symbols = game.symbols.filter(s => s.pos.x != pos.x || s.pos.y != pos.y);
+    const clickGroup = findGroupContaining(game, pos);
+    game.symbols = game.symbols.filter(s => {
+      if (s.pos.x === pos.x && s.pos.y === pos.y) return false;
+      if (clickGroup && clickGroup.some(p => p.x === s.pos.x && p.y === s.pos.y)) return false;
+      return true;
+    });
   } else if (event.button == 0) {
     // Place symbol
 
@@ -524,6 +704,8 @@ function handleImport(event: MouseEvent) {
       // pollute the undo stack.
       snapshotGame();
       game = parsed;
+      ensureGroups(game);
+      pendingGroup = [];
 
       drawGame(game);
       updateRuleList();
@@ -543,6 +725,8 @@ function handlePreset(event: Event) {
   } else {
     snapshotGame();
     game = JSON.parse(presets[parseInt(preset) - 1]);
+    ensureGroups(game);
+    pendingGroup = [];
   }
   drawGame(game);
   updateRuleList();
@@ -567,5 +751,7 @@ document.getElementById('import-button')!.addEventListener('click', handleImport
 document.getElementById('export-button')!.addEventListener('click', handleExport);
 document.getElementById('solve-button')!.addEventListener('click', solveBoard);
 document.getElementById('undo-button')!.addEventListener('click', handleUndo);
+document.getElementById('commit-group-button')!.addEventListener('click', handleCommitGroup);
+document.getElementById('item-select')!.addEventListener('change', updateCommitGroupVisibility);
 
 canvas.addEventListener('mousedown', handlePlaceSymbol);

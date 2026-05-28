@@ -104,10 +104,10 @@ export function isValidAdvanced(
           affected_cells = verify_viewpoint_symbol(game.board, adj.symbol);
         } else if (adj.symbol.kind == 'galaxy') {
           // Galaxy
-          affected_cells = verify_galaxy_symbol(game.board, adj.symbol);
+          affected_cells = verify_galaxy_symbol(game, adj.symbol);
         } else if (adj.symbol.kind == 'lotus') {
           // Lotus
-          affected_cells = verify_lotus_symbol(game.board, adj.symbol);
+          affected_cells = verify_lotus_symbol(game, adj.symbol);
         }
 
         if (!affected_cells!) return false;
@@ -157,6 +157,21 @@ export function isValidAdvanced(
     if (rule.kind == 'bad_pattern_snake' && !verify_bad_pattern_snake_rule(game.board, rule)) return false;
   }
 
+  // Joined-cell groups: all coloured cells in a group must agree on colour.
+  // Mirrors the check in isValid() (backtrackNaive.ts) — kept here so the
+  // optimised solver enforces it on every guess.
+  if (game.groups) {
+    for (const group of game.groups) {
+      let groupColor: Cell | null = null;
+      for (const p of group) {
+        const cell = game.board[p.x][p.y];
+        if (cell !== Cell.Light && cell !== Cell.Dark) continue;
+        if (groupColor === null) groupColor = cell;
+        else if (groupColor !== cell) return false;
+      }
+    }
+  }
+
   return true;
 }
 
@@ -184,9 +199,9 @@ export function solveAdvanced(game: Game): boolean {
     } else if (symbol.kind == 'viewpoint') {
       result = verify_viewpoint_symbol(game.board, symbol);
     } else if (symbol.kind == 'galaxy') {
-      result = verify_galaxy_symbol(game.board, symbol);
+      result = verify_galaxy_symbol(game, symbol);
     } else if (symbol.kind == 'lotus') {
-      result = verify_lotus_symbol(game.board, symbol);
+      result = verify_lotus_symbol(game, symbol);
     }
 
     if (!result!) return false;

@@ -33,8 +33,23 @@ export function isValid(game: Game): boolean {
     if (symbol.kind == 'area' && !verify_area_symbol(game.board, symbol)) return false;
     if (symbol.kind == 'dart' && !verify_dart_symbol(game.board, symbol)) return false;
     if (symbol.kind == 'viewpoint' && !verify_viewpoint_symbol(game.board, symbol)) return false;
-    if (symbol.kind == 'galaxy' && !verify_galaxy_symbol(game.board, symbol)) return false;
-    if (symbol.kind == 'lotus' && !verify_lotus_symbol(game.board, symbol)) return false;
+    if (symbol.kind == 'galaxy' && !verify_galaxy_symbol(game, symbol)) return false;
+    if (symbol.kind == 'lotus' && !verify_lotus_symbol(game, symbol)) return false;
+  }
+
+  // Joined-cell groups: all coloured cells in a group must agree on colour.
+  // Empty/Border cells in a group are wildcards — the constraint only fires
+  // when two non-empty cells in the same group disagree.
+  if (game.groups) {
+    for (const group of game.groups) {
+      let groupColor: Cell | null = null;
+      for (const p of group) {
+        const cell = game.board[p.x][p.y];
+        if (cell !== Cell.Light && cell !== Cell.Dark) continue;
+        if (groupColor === null) groupColor = cell;
+        else if (groupColor !== cell) return false;
+      }
+    }
   }
 
   return true;

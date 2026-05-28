@@ -36,6 +36,13 @@ npm run dev
 - galaxy
 - lotus
 
+Both galaxy and lotus may be placed on a joined cell group; the symmetry center becomes the group's centroid (so a 2×2 group hosts a galaxy whose 180° rotation maps each cell to its diagonal opposite).
+
+#### Other
+
+- Joined cell groups — pick "Join Cells" mode to link cells that must share the same color in any solution. Cells must form a single connected shape (no gaps, no diagonals). Cells in a group are rendered as one shape.
+- Undo button — reverses the last user gesture (solve, rule add, cell paint, etc.). Multi-level, up to 50 entries.
+
 ## How this works
 
 This solver uses a technique called backtracking. Essentially, the solver recursively guesses cells, and backtrack if the guesses are wrong. The process continues until a solution have been found. Some heuristics (e.g. Most Constrained Variable) are also implemented on certain rules & symbols to speed up the process. The solver is smart enough to first guess cells that are more constrained than other cells.

@@ -33,6 +33,11 @@
           </li>
           <li>"Border" mode - left click to place border cell, right click to clear cell.</li>
           <li>"Symbol" mode - left click to place a symbol, right click to remove symbol.</li>
+          <li>
+            "Join Cells" mode - left click cells to add to or remove from the pending group; press
+            "Commit Group" to finalize. Right click any cell in a committed group to delete that group.
+            Joined cells must share the same color in any solution.
+          </li>
         </ol>
 
         <h3>
@@ -100,6 +105,7 @@
         <select id="item-select">
           <option value="cell">Cell</option>
           <option value="border">Border</option>
+          <option value="join">Join Cells</option>
           <option value="area">Area</option>
           <option value="viewpoint">Viewpoint</option>
           <option value="galaxy">Galaxy</option>
@@ -137,6 +143,7 @@
 
         <button id="solve-button">Solve!</button>
         <button id="undo-button" disabled>Undo</button>
+        <button id="commit-group-button">Commit Group</button>
       </div>
 
       <div id="bottom">

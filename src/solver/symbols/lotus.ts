@@ -1,4 +1,4 @@
-import { Board, Cell, Pos, getNeighbours, verifyPos } from '..';
+import { Board, Game, Cell, Pos, getNeighbours, verifyPos, findGroupContaining, getSymbolCenter } from '..';
 
 export interface LotusSymbol {
   pos: Pos;
@@ -6,50 +6,69 @@ export interface LotusSymbol {
   rotation: 0 | 1 | 2 | 3;
 }
 
-// Translate a position in relative to a lotus symbol
-function movePosLotus(board: Board, symbol: LotusSymbol, pos: Pos): Pos | null {
-  let newPos: Pos;
-  if (symbol.rotation == 0) {
-    newPos = { x: pos.x, y: 2 * symbol.pos.y - pos.y };
-  } else if (symbol.rotation == 1) {
-    newPos = { x: symbol.pos.x + symbol.pos.y - pos.y, y: symbol.pos.x + symbol.pos.y - pos.x };
-  } else if (symbol.rotation == 2) {
-    newPos = { x: 2 * symbol.pos.x - pos.x, y: pos.y };
-  } else if (symbol.rotation == 3) {
-    newPos = { x: symbol.pos.x - symbol.pos.y + pos.y, y: symbol.pos.y - symbol.pos.x + pos.x };
+// Reflect a position around a half-integer-capable lotus axis.
+// rotation 0 = horizontal mirror (vertical axis through center)
+// rotation 1 = anti-diagonal mirror
+// rotation 2 = vertical mirror (horizontal axis through center)
+// rotation 3 = main-diagonal mirror
+// Returns null off-board or if the reflection lands on a non-integer cell.
+function reflectPos(
+  board: Board,
+  center: { x: number; y: number },
+  rotation: 0 | 1 | 2 | 3,
+  pos: Pos
+): Pos | null {
+  let nx: number, ny: number;
+  if (rotation == 0) {
+    nx = pos.x;
+    ny = 2 * center.y - pos.y;
+  } else if (rotation == 1) {
+    nx = center.x + center.y - pos.y;
+    ny = center.x + center.y - pos.x;
+  } else if (rotation == 2) {
+    nx = 2 * center.x - pos.x;
+    ny = pos.y;
+  } else {
+    nx = center.x - center.y + pos.y;
+    ny = center.y - center.x + pos.x;
   }
-
-  return verifyPos(board, newPos!) ? newPos! : null;
+  if (!Number.isInteger(nx) || !Number.isInteger(ny)) return null;
+  const newPos = { x: nx, y: ny };
+  return verifyPos(board, newPos) ? newPos : null;
 }
 
-// Check if lotus symbol is valid
-export function verifyLotusSymbol(board: Board, symbol: LotusSymbol): Pos[] | false {
-  const pos = symbol.pos;
-  const cell = board[pos.x][pos.y];
+// See galaxy.ts for the rationale on the Game-typed signature and the
+// group-centroid handling — lotus follows the same shape.
+export function verifyLotusSymbol(game: Game, symbol: LotusSymbol): Pos[] | false {
+  const board = game.board;
+  const center = getSymbolCenter(game, symbol.pos);
+  const group = findGroupContaining(game, symbol.pos);
 
-  if (cell == Cell.Empty) return [pos];
+  const anchorCells: Pos[] = group ?? [symbol.pos];
 
-  const queue: Pos[] = [pos];
-  const visited: boolean[][] = [];
-
-  const affectedCells: Pos[] = [];
-
-  // Initialize the visited array
-  for (let x = 0; x < board.length; x++) {
-    visited[x] = [];
-    for (let y = 0; y < board[0].length; y++) {
-      visited[x][y] = false;
-    }
+  let cell: Cell = Cell.Empty;
+  for (const p of anchorCells) {
+    const c = board[p.x][p.y];
+    if (c === Cell.Light || c === Cell.Dark) { cell = c; break; }
   }
 
-  // Visit all connected cells
+  if (cell === Cell.Empty) return anchorCells.slice();
+
+  const queue: Pos[] = anchorCells.slice();
+  const visited: boolean[][] = [];
+  const affectedCells: Pos[] = [];
+
+  for (let x = 0; x < board.length; x++) {
+    visited[x] = [];
+    for (let y = 0; y < board[0].length; y++) visited[x][y] = false;
+  }
+
   while (queue.length > 0) {
     const curPos = queue.pop()!;
-
     if (visited[curPos.x][curPos.y]) continue;
     visited[curPos.x][curPos.y] = true;
 
-    const oppoPos = movePosLotus(board, symbol, curPos);
+    const oppoPos = reflectPos(board, center, symbol.rotation, curPos);
     if (oppoPos == null) return false;
     if (!(board[oppoPos.x][oppoPos.y] == Cell.Empty || board[oppoPos.x][oppoPos.y] == cell)) return false;
 

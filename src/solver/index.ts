@@ -42,6 +42,11 @@ export interface Game {
   board: Board;
   rules: Rule[];
   symbols: Symbol[];
+  // Joined cell groups. Each group is a list of positions that must all
+  // share the same color in any valid solution. Empty cells in a group are
+  // a wildcard — the constraint only fires once two cells in the same group
+  // are colored and disagree.
+  groups: Pos[][];
   sizeX: number;
   sizeY: number;
 }
@@ -79,6 +84,30 @@ export function getNeighbours(board: Board, pos: Pos): Pos[] {
   }
 
   return positions;
+}
+
+// Find the cell-group containing `pos`, or null if pos isn't in any group.
+export function findGroupContaining(game: Game, pos: Pos): Pos[] | null {
+  if (!game.groups) return null;
+  for (const group of game.groups) {
+    for (const p of group) {
+      if (p.x === pos.x && p.y === pos.y) return group;
+    }
+  }
+  return null;
+}
+
+// Effective symmetry center for a symbol placed at `pos`. If pos sits inside a
+// cell-group, the centroid of the group is returned (possibly with half-integer
+// coordinates — that's the whole point: a 2x2 group's centroid lands on the
+// corner where four cells meet, which is what lotus/galaxy need). Otherwise
+// the symbol's own pos is returned unchanged.
+export function getSymbolCenter(game: Game, pos: Pos): { x: number; y: number } {
+  const group = findGroupContaining(game, pos);
+  if (!group || group.length === 0) return { x: pos.x, y: pos.y };
+  let sumX = 0, sumY = 0;
+  for (const p of group) { sumX += p.x; sumY += p.y; }
+  return { x: sumX / group.length, y: sumY / group.length };
 }
 
 export function getDirOffset(dir: Direction): [number, number] {
