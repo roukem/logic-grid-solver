@@ -9,5 +9,7 @@ export {
   BadPatternCheckerboardRule,
   verifyBadPatternCheckerboardRule as verify_bad_pattern_checkerboard_rule,
   BadPatternAlmostSquareRule,
-  verifyBadPatternAlmostSquareRule as verify_bad_pattern_almost_square_rule
+  verifyBadPatternAlmostSquareRule as verify_bad_pattern_almost_square_rule,
+  BadPatternSnakeRule,
+  verifyBadPatternSnakeRule as verify_bad_pattern_snake_rule
 } from './bad_pattern';

@@ -26,7 +26,7 @@ npm run dev
 - connected
 - area
 - underclued
-- bad patterns (lines, T-shapes, checkerboards, almost-squares)
+- bad patterns (lines, T-shapes, checkerboards, almost-squares, snakes)
 
 #### Symbols
 

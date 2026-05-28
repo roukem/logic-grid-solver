@@ -131,6 +131,69 @@ export function verifyBadPatternCheckerboardRule(
   return true;
 }
 
+// ---------- Snake / zig-zag ----------
+// 4 same-color cells forming a connected zig-zag. Looks like a 2x2 square
+// where one row (or column) has been shifted over by one. 4 orientations:
+//   X X .       . X X       X .       . X
+//   . X X       X X .       X X       X X
+//   (horiz Z)   (horiz S)   . X       X .
+//                          (vert Z)  (vert S)
+
+export interface BadPatternSnakeRule {
+  kind: 'bad_pattern_snake';
+  color: Color;
+}
+
+export function verifyBadPatternSnakeRule(board: Board, rule: BadPatternSnakeRule): boolean {
+  const c = rule.color;
+  const sizeX = board.length;
+  const sizeY = board[0].length;
+
+  // Horizontal forms (bounding box 2 rows x 3 cols; anchor = top-left)
+  for (let x = 0; x < sizeX - 1; x++) {
+    for (let y = 0; y < sizeY - 2; y++) {
+      // Z: top [y, y+1], bottom [y+1, y+2]
+      if (
+        board[x][y] === c &&
+        board[x][y + 1] === c &&
+        board[x + 1][y + 1] === c &&
+        board[x + 1][y + 2] === c
+      ) return false;
+
+      // S: top [y+1, y+2], bottom [y, y+1]
+      if (
+        board[x][y + 1] === c &&
+        board[x][y + 2] === c &&
+        board[x + 1][y] === c &&
+        board[x + 1][y + 1] === c
+      ) return false;
+    }
+  }
+
+  // Vertical forms (bounding box 3 rows x 2 cols; anchor = top-left)
+  for (let x = 0; x < sizeX - 2; x++) {
+    for (let y = 0; y < sizeY - 1; y++) {
+      // Vert Z: left col [x, x+1], right col [x+1, x+2]
+      if (
+        board[x][y] === c &&
+        board[x + 1][y] === c &&
+        board[x + 1][y + 1] === c &&
+        board[x + 2][y + 1] === c
+      ) return false;
+
+      // Vert S: right col [x, x+1], left col [x+1, x+2]
+      if (
+        board[x][y + 1] === c &&
+        board[x + 1][y] === c &&
+        board[x + 1][y + 1] === c &&
+        board[x + 2][y] === c
+      ) return false;
+    }
+  }
+
+  return true;
+}
+
 // ---------- Almost square ----------
 // A 2x2 block with exactly 3 cells of `color` and 1 of the opposite color.
 // `color` is the majority color (the "(Dark)" / "(Light)" suffix in the UI).

@@ -405,6 +405,12 @@ function handleAddRule(event: MouseEvent) {
   } else if (rule == 'bad_pattern_almost_square light') {
     game.rules.push({ kind: 'bad_pattern_almost_square', color: Cell.Light });
     updateRuleList();
+  } else if (rule == 'bad_pattern_snake dark') {
+    game.rules.push({ kind: 'bad_pattern_snake', color: Cell.Dark });
+    updateRuleList();
+  } else if (rule == 'bad_pattern_snake light') {
+    game.rules.push({ kind: 'bad_pattern_snake', color: Cell.Light });
+    updateRuleList();
   }
 }
 
@@ -436,6 +442,8 @@ function updateRuleList() {
       const majority = rule.color == Cell.Dark ? 'dark' : 'light';
       const minority = rule.color == Cell.Dark ? 'light' : 'dark';
       element.textContent = `No 2×2 with three ${majority} cells and one ${minority} cell`;
+    } else if (rule.kind == 'bad_pattern_snake') {
+      element.textContent = `No snake/zig-zag of ${rule.color == Cell.Dark ? 'dark' : 'light'} cells`;
     }
 
     list.appendChild(element);
