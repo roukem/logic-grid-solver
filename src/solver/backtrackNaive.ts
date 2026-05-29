@@ -17,7 +17,8 @@ import {
   verify_dart_symbol,
   verify_viewpoint_symbol,
   verify_galaxy_symbol,
-  verify_lotus_symbol
+  verify_lotus_symbol,
+  verify_myopia_symbol
 } from './symbols';
 
 export function isValid(game: Game): boolean {
@@ -40,6 +41,7 @@ export function isValid(game: Game): boolean {
     if (symbol.kind == 'viewpoint' && !verifyWithOffByOne(game, symbol, verify_viewpoint_symbol)) return false;
     if (symbol.kind == 'galaxy' && !verify_galaxy_symbol(game, symbol)) return false;
     if (symbol.kind == 'lotus' && !verify_lotus_symbol(game, symbol)) return false;
+    if (symbol.kind == 'myopia' && !verify_myopia_symbol(game.board, symbol)) return false;
   }
 
   // Joined-cell groups: all coloured cells in a group must agree on colour.

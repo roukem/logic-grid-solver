@@ -283,7 +283,23 @@ function drawGame(game: Game) {
       ctx.fillText(text!, cx, cy);
     }
 
-    if (symbol.kind != 'area') {
+    if (symbol.kind == 'myopia') {
+      // "M" in the cell centre + the active arrows splayed around it. Each
+      // arrow sits about a third of the way out from centre toward its edge,
+      // close enough that the cell-bottom kind label would collide with the
+      // down arrow — so we suppress the kind label for myopia (handled below).
+      ctx.font = 'bold ' + Math.floor(pixelCellSize / 3) + 'px Arial';
+      ctx.fillText('M', cx, cy);
+      ctx.font = Math.floor(pixelCellSize / 3) + 'px Arial';
+      const offset = pixelCellSize * 0.32;
+      const dirs = new Set(symbol.directions);
+      if (dirs.has(Direction.Up))    ctx.fillText('↑', cx, cy - offset);
+      if (dirs.has(Direction.Down))  ctx.fillText('↓', cx, cy + offset);
+      if (dirs.has(Direction.Left))  ctx.fillText('←', cx - offset, cy);
+      if (dirs.has(Direction.Right)) ctx.fillText('→', cx + offset, cy);
+    }
+
+    if (symbol.kind != 'area' && symbol.kind != 'myopia') {
       ctx.font = Math.floor(pixelCellSize / 4) + 'px Arial';
 
       let text = symbol.kind;
@@ -662,6 +678,16 @@ function handlePlaceSymbol(event: MouseEvent) {
       symbol = { kind: 'lotus', pos, rotation: 2 };
     } else if (mode == 'lotus 3') {
       symbol = { kind: 'lotus', pos, rotation: 3 };
+    } else if (mode.startsWith('myopia ')) {
+      // mode = 'myopia <chars>' where each char is u/d/l/r in any order.
+      // Normalise to canonical Up,Down,Left,Right order for clean serialisation.
+      const chars = new Set(mode.slice('myopia '.length));
+      const directions: Direction[] = [];
+      if (chars.has('u')) directions.push(Direction.Up);
+      if (chars.has('d')) directions.push(Direction.Down);
+      if (chars.has('l')) directions.push(Direction.Left);
+      if (chars.has('r')) directions.push(Direction.Right);
+      symbol = { kind: 'myopia', pos, directions };
     }
 
     // If a symbol already exists at pos, remove it

@@ -18,7 +18,8 @@ import {
   verify_viewpoint_symbol,
   verify_dart_symbol,
   verify_galaxy_symbol,
-  verify_lotus_symbol
+  verify_lotus_symbol,
+  verify_myopia_symbol
 } from './symbols';
 import { buildDartAdjacency } from './symbols/dart';
 
@@ -111,6 +112,9 @@ export function isValidAdvanced(
         } else if (adj.symbol.kind == 'lotus') {
           // Lotus
           affected_cells = verify_lotus_symbol(game, adj.symbol);
+        } else if (adj.symbol.kind == 'myopia') {
+          // Myopia
+          affected_cells = verify_myopia_symbol(game.board, adj.symbol);
         }
 
         if (!affected_cells!) return false;
@@ -210,6 +214,8 @@ export function solveAdvanced(game: Game): boolean {
       result = verify_galaxy_symbol(game, symbol);
     } else if (symbol.kind == 'lotus') {
       result = verify_lotus_symbol(game, symbol);
+    } else if (symbol.kind == 'myopia') {
+      result = verify_myopia_symbol(game.board, symbol);
     }
 
     if (!result!) return false;

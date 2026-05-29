@@ -36,6 +36,7 @@ npm run dev
 - viewpoint
 - galaxy
 - lotus
+- myopia (1–4 cardinal arrows pointing to every tied-closest cell of the opposite colour)
 
 Both galaxy and lotus may be placed on a joined cell group; the symmetry center becomes the group's centroid (so a 2×2 group hosts a galaxy whose 180° rotation maps each cell to its diagonal opposite).
 

@@ -10,7 +10,7 @@ import {
   BadPatternSquareRule,
   OffByOneRule
 } from './rules';
-import { AreaSymbol, DartSymbol, ViewpointSymbol, GalaxySymbol, LotusSymbol } from './symbols';
+import { AreaSymbol, DartSymbol, ViewpointSymbol, GalaxySymbol, LotusSymbol, MyopiaSymbol } from './symbols';
 
 export interface Pos {
   x: number;
@@ -38,7 +38,7 @@ export type Rule =
   | BadPatternSquareRule
   | OffByOneRule;
 
-export type Symbol = AreaSymbol | DartSymbol | ViewpointSymbol | GalaxySymbol | LotusSymbol;
+export type Symbol = AreaSymbol | DartSymbol | ViewpointSymbol | GalaxySymbol | LotusSymbol | MyopiaSymbol;
 
 export type Board = Cell[][];
 
